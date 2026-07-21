@@ -29,23 +29,66 @@ body{font-family:'Helvetica Neue',Arial,'Hiragino Sans','Yu Gothic',sans-serif}
 .pop .ad{color:#666;font-size:.78rem;margin:4px 0 7px;line-height:1.45}
 .pop .lk{display:inline-block;padding:5px 12px;border-radius:6px;background:#e63946;
          color:#fff;text-decoration:none;font-size:.76rem;font-weight:600}
+
+/* 現在地マーカー */
+.me-dot{width:16px;height:16px;border-radius:50%;background:#1a73e8;
+        border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25),0 2px 6px rgba(0,0,0,.4)}
+.me-ring{animation:pulse 2s ease-out infinite}
+@keyframes pulse{
+  0%{transform:scale(.55);opacity:.75}
+  100%{transform:scale(2.6);opacity:0}
+}
+
+/* 現在地ボタン */
+#gps{position:absolute;right:12px;bottom:calc(22px + env(safe-area-inset-bottom));
+     width:48px;height:48px;border-radius:50%;border:none;background:#fff;
+     box-shadow:0 2px 10px rgba(0,0,0,.3);cursor:pointer;z-index:1000;
+     display:flex;align-items:center;justify-content:center;font-size:1.35rem}
+#gps.on{background:#1a73e8}
+#gps.on svg{fill:#fff}
+#gps svg{width:24px;height:24px;fill:#444}
+#gps.busy{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 最寄り店舗バー */
+#near{position:absolute;left:10px;right:70px;bottom:calc(22px + env(safe-area-inset-bottom));
+      background:rgba(16,22,38,.94);color:#fff;border-radius:12px;padding:10px 13px;
+      box-shadow:0 3px 14px rgba(0,0,0,.4);z-index:999;display:none;
+      border-left:3px solid #f0c040}
+#near .lb{font-size:.66rem;color:#8a9bb8;letter-spacing:.5px}
+#near .nm{font-size:.88rem;font-weight:700;margin:2px 0 1px}
+#near .ds{font-size:.74rem;color:#c8d4e8}
+#near .cl{position:absolute;top:6px;right:9px;color:#6b7a94;font-size:1rem;
+          background:none;border:none;cursor:pointer;padding:2px 4px}
 </style>
 </head>
 <body>
 <div id="hd">🏋️ ゴールドジム 関東エリア 店舗マップ
   <small>全65店舗</small></div>
 <div id="lgbar"><button class="lg" data-pref="東京都" style="--c:#e63946"><span class="dot"></span>東京都 30</button><button class="lg" data-pref="千葉県" style="--c:#2a9d8f"><span class="dot"></span>千葉県 13</button><button class="lg" data-pref="神奈川県" style="--c:#457b9d"><span class="dot"></span>神奈川県 7</button><button class="lg" data-pref="埼玉県" style="--c:#f4a261"><span class="dot"></span>埼玉県 7</button><button class="lg" data-pref="茨城県" style="--c:#8d6a9f"><span class="dot"></span>茨城県 3</button><button class="lg" data-pref="群馬県" style="--c:#6a994e"><span class="dot"></span>群馬県 3</button><button class="lg" data-pref="栃木県" style="--c:#e9c46a"><span class="dot"></span>栃木県 2</button></div>
-<div id="map"></div>
+<div id="map">
+  <div id="near">
+    <button class="cl" onclick="document.getElementById('near').style.display='none'">✕</button>
+    <div class="lb">現在地から最も近い店舗</div>
+    <div class="nm" id="near-nm"></div>
+    <div class="ds" id="near-ds"></div>
+  </div>
+  <button id="gps" title="現在地">
+    <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm8.94 3A9 9 0 0013 3.06V1h-2v2.06A9 9 0 003.06 11H1v2h2.06A9 9 0 0011 20.94V23h2v-2.06A9 9 0 0020.94 13H23v-2h-2.06zM12 19a7 7 0 110-14 7 7 0 010 14z"/></svg>
+  </button>
+</div>
+
 <script>
 var STORES = [{"name": "原宿東京", "addr": "〒150-0001 東京都渋谷区神宮前6-31-17 V28 4F・3F・B2F", "pref": "東京都", "lat": 35.668793, "lng": 139.704422}, {"name": "原宿ANNEX", "addr": "〒150-0001 東京都渋谷区神宮前1-5-8 神宮前タワービルディングB1F（フロントは1F）", "pref": "東京都", "lat": 35.670582, "lng": 139.706863}, {"name": "表参道東京", "addr": "〒150-0001 東京都渋谷区神宮前4-3-2 表参道スクエアビル2・3F", "pref": "東京都", "lat": 35.666824, "lng": 139.71109}, {"name": "渋谷東京", "addr": "〒150-0002 東京都渋谷区渋谷1-23-16 cocoti 9F・10F・11F", "pref": "東京都", "lat": 35.662025, "lng": 139.702377}, {"name": "南青山東京", "addr": "〒107-0062 東京都港区南青山6-2-2 南青山ホームズB1F", "pref": "東京都", "lat": 35.660999, "lng": 139.715378}, {"name": "笹塚東京", "addr": "〒151-0073 東京都渋谷区笹塚1-61-8 ホテルブーゲンビリア新宿内 B1F・B2F", "pref": "東京都", "lat": 35.673157, "lng": 139.663559}, {"name": "代々木上原東京", "addr": "〒151-0066 東京都渋谷区西原3-8-5 アコルデ代々木上原内", "pref": "東京都", "lat": 35.66946, "lng": 139.680283}, {"name": "代々木公園PREMIUM", "addr": "〒151-0053 東京都渋谷区代々木5-66-3", "pref": "東京都", "lat": 35.671547, "lng": 139.690659}, {"name": "四ツ谷東京", "addr": "〒102-0085 東京都千代田区六番町13番地2 桃園学園ビル", "pref": "東京都", "lat": 35.686192, "lng": 139.732376}, {"name": "銀座東京", "addr": "〒104-0061 東京都中央区銀座1-2-1 東京都高速道路紺屋ビル2F", "pref": "東京都", "lat": 35.675804, "lng": 139.766449}, {"name": "銀座中央", "addr": "〒104-0061 東京都中央区銀座3丁目4-12 文祥堂銀座ビルB1・B2F", "pref": "東京都", "lat": 35.672558, "lng": 139.765289}, {"name": "浜松町東京", "addr": "〒105-0022 東京都港区海岸1-2-3 汐留芝離宮ビルディング2階", "pref": "東京都", "lat": 35.656849, "lng": 139.759186}, {"name": "ノース東京", "addr": "〒170-0004 東京都豊島区北大塚2-24-20 永信ビル3F", "pref": "東京都", "lat": 35.733543, "lng": 139.728745}, {"name": "ウエスト東京", "addr": "〒164-0001 東京都中野区中野4-3-1 サンクォーレタワー3F", "pref": "東京都", "lat": 35.708858, "lng": 139.66452}, {"name": "サウス東京", "addr": "〒140-0011 東京都品川区東大井5-2-1 おおい元気館4F", "pref": "東京都", "lat": 35.608265, "lng": 139.73555}, {"name": "サウス東京ANNEX", "addr": "〒143-0023 東京都大田区山王2-4-1 大森駅前ビル6F・7F", "pref": "東京都", "lat": 35.588875, "lng": 139.727402}, {"name": "北千住東京", "addr": "〒120-0034 東京都足立区千住1-4-1 東京芸術センター5F", "pref": "東京都", "lat": 35.746788, "lng": 139.80011}, {"name": "曳舟東京", "addr": "〒131-0046 東京都墨田区京島1-47-10", "pref": "東京都", "lat": 35.718689, "lng": 139.821793}, {"name": "東陽町スーパーセンター", "addr": "〒135-0016 東京都江東区東陽2-2-20", "pref": "東京都", "lat": 35.666416, "lng": 139.816544}, {"name": "イースト東京", "addr": "〒136-0076 東京都江東区南砂3-3-6", "pref": "東京都", "lat": 35.672211, "lng": 139.826416}, {"name": "西葛西東京", "addr": "〒134-0088 東京都江戸川区西葛西6-16-1 3～7F", "pref": "東京都", "lat": 35.663647, "lng": 139.859467}, {"name": "府中東京", "addr": "〒183-0022 東京都府中市宮西町1-4-1 府中トーセイビルⅠ4F", "pref": "東京都", "lat": 35.671703, "lng": 139.478622}, {"name": "聖蹟桜ヶ丘東京", "addr": "〒206-0011 東京都多摩市関戸4-72 ヴィータモールせいせき6階", "pref": "東京都", "lat": 35.649632, "lng": 139.447052}, {"name": "立川東京", "addr": "〒190-8507 東京都立川市曙町2-39-3 立川高島屋S.C.7階", "pref": "東京都", "lat": 35.700424, "lng": 139.4133}, {"name": "南大沢東京", "addr": "〒192-0364 東京都八王子市南大沢2丁目30番地 サザンウインズ南大沢2F", "pref": "東京都", "lat": 35.613979, "lng": 139.381302}, {"name": "国立東京", "addr": "〒186-0004 東京都国立市中1-9-30 国立せきやビル5F", "pref": "東京都", "lat": 35.697727, "lng": 139.445435}, {"name": "八王子東京", "addr": "〒192-0083 東京都八王子市旭町5-1 八王子ツインタワーB館5F 6F", "pref": "東京都", "lat": 35.656246, "lng": 139.338104}, {"name": "町田東京", "addr": "〒194-0013 東京都町田市原町田4丁目1-14 プラザ町田3・4F", "pref": "東京都", "lat": 35.540924, "lng": 139.448471}, {"name": "東中野東京", "addr": "〒164-0003 東京都中野区東中野5-1-1 ユニゾンモール2F", "pref": "東京都", "lat": 35.706509, "lng": 139.686829}, {"name": "練馬高野台東京", "addr": "〒177-0033 東京都練馬区高野台1-7-17 NFプラザ3F・4F", "pref": "東京都", "lat": 35.741123, "lng": 139.617416}, {"name": "浦安千葉", "addr": "〒279-0002 千葉県浦安市北栄1-13-25 西友パートⅡ5F", "pref": "千葉県", "lat": 35.66581, "lng": 139.893646}, {"name": "行徳千葉フィットネスセンター", "addr": "〒272-0133 千葉県市川市行徳駅前2-3-1 ポニービル2F", "pref": "千葉県", "lat": 35.683121, "lng": 139.914185}, {"name": "行徳千葉アスレチックセンター", "addr": "〒272-0132 千葉県市川市湊新田1-6-8 スーパーセレクション2F", "pref": "千葉県", "lat": 35.681, "lng": 139.912003}, {"name": "本八幡千葉", "addr": "〒272-0021 千葉県市川市八幡2-15-10 PATIO 8F", "pref": "千葉県", "lat": 35.721352, "lng": 139.927353}, {"name": "津田沼千葉", "addr": "〒275-0016 千葉県習志野市津田沼5-12-4 NARASHINO CREST 地下1階", "pref": "千葉県", "lat": 35.682686, "lng": 140.024017}, {"name": "幕張千葉WBG", "addr": "〒261-7101 千葉県千葉市美浜区中瀬2-6-1 ワールドビジネスガーデン マリブダイニング1F", "pref": "千葉県", "lat": 35.648041, "lng": 140.038834}, {"name": "幕張千葉ANNEX", "addr": "〒261-0021 千葉県千葉市美浜区ひび野2丁目4番地 プレナ幕張3F", "pref": "千葉県", "lat": 35.647892, "lng": 140.040405}, {"name": "幕張ベイパークアリーナ", "addr": "〒261-0014 千葉県千葉市美浜区若葉3-1-37 幕張ベイパークウェルネスセンター", "pref": "千葉県", "lat": 35.649914, "lng": 140.049454}, {"name": "南船橋千葉", "addr": "〒273-0012 千葉県船橋市浜町2-2-7 ららぽーとTOKYO-BAY North Gate4F", "pref": "千葉県", "lat": 35.687626, "lng": 139.992218}, {"name": "千葉ニュータウン", "addr": "〒270-1340 千葉県印西市中央南1-8 千葉ニュータウン駅前センタービル3階", "pref": "千葉県", "lat": 35.798595, "lng": 140.117126}, {"name": "千葉ニュータウンジョイフルアスレティッククラブ", "addr": "〒270-1331 千葉県印西市牧の原2-4", "pref": "千葉県", "lat": 35.806999, "lng": 140.155777}, {"name": "柏千葉", "addr": "〒277-0863 千葉県柏市豊四季135-108", "pref": "千葉県", "lat": 35.866505, "lng": 139.935379}, {"name": "成田千葉", "addr": "〒286-0017 千葉県成田市赤坂2-1-14 そよら成田別館1F", "pref": "千葉県", "lat": 35.778236, "lng": 140.290726}, {"name": "横浜馬車道", "addr": "〒231-0005 神奈川県横浜市中区本町4-43 A-PLACE馬車道", "pref": "神奈川県", "lat": 35.449257, "lng": 139.637344}, {"name": "横浜上星川", "addr": "〒240-0042 神奈川県横浜市保土ケ谷区上星川3丁目1-1", "pref": "神奈川県", "lat": 35.467758, "lng": 139.579773}, {"name": "戸塚神奈川", "addr": "〒244-0003 神奈川県横浜市戸塚区戸塚町10番地 戸塚モディ6F", "pref": "神奈川県", "lat": 35.400505, "lng": 139.534561}, {"name": "湘南神奈川", "addr": "〒251-0047 神奈川県藤沢市辻堂2-7-1 湘南パールビル3・4F", "pref": "神奈川県", "lat": 35.336494, "lng": 139.446548}, {"name": "横須賀神奈川", "addr": "〒238-0007 神奈川県横須賀市若松町2-4 横須賀中央駅前ビル5F", "pref": "神奈川県", "lat": 35.279613, "lng": 139.669983}, {"name": "溝の口神奈川", "addr": "〒213-0001 神奈川県川崎市高津区溝口1丁目1番30号 溝の口ブロックスビル2F・3F", "pref": "神奈川県", "lat": 35.599087, "lng": 139.611191}, {"name": "厚木神奈川", "addr": "〒243-0018 神奈川県厚木市中町2-4-13 本厚木駅前ビル5・6F", "pref": "神奈川県", "lat": 35.440426, "lng": 139.365265}, {"name": "大宮さいたま", "addr": "〒330-0854 埼玉県さいたま市大宮区桜木町2-1-1 大宮アルシェビル7F", "pref": "埼玉県", "lat": 35.906166, "lng": 139.622147}, {"name": "さいたまスーパーアリーナ", "addr": "〒330-0081 埼玉県さいたま市中央区新都心8番地 さいたまスーパーアリーナ6F", "pref": "埼玉県", "lat": 35.896194, "lng": 139.630676}, {"name": "吉川埼玉", "addr": "〒342-0041 埼玉県吉川市保1-13-3 ライフ吉川駅前店2F", "pref": "埼玉県", "lat": 35.878368, "lng": 139.844208}, {"name": "東浦和さいたま", "addr": "〒336-0932 埼玉県さいたま市緑区大字中尾緑島2503-3", "pref": "埼玉県", "lat": 35.872158, "lng": 139.684586}, {"name": "新所沢埼玉", "addr": "〒359-1111 埼玉県所沢市緑町1-1-11 西武ショッピングプラザ 新所沢グリーンハイツB1F", "pref": "埼玉県", "lat": 35.805317, "lng": 139.456284}, {"name": "久喜埼玉", "addr": "〒346-0003 埼玉県久喜市久喜中央1-1-20 クッキープラザ4F", "pref": "埼玉県", "lat": 36.066628, "lng": 139.676788}, {"name": "エクスプレス本川越埼玉", "addr": "〒350-0043 埼玉県川越市新富町1丁目3番12", "pref": "埼玉県", "lat": 35.916039, "lng": 139.482925}, {"name": "牛久茨城", "addr": "〒300-1221 茨城県牛久市牛久町280番地 エスカード牛久店", "pref": "茨城県", "lat": 35.975475, "lng": 140.139908}, {"name": "土浦茨城ジョイフルアスレティッククラブ", "addr": "〒300-0843 茨城県土浦市中村南4-11-7", "pref": "茨城県", "lat": 36.040058, "lng": 140.164383}, {"name": "守谷茨城ジョイフルアスレティッククラブ", "addr": "〒302-0127 茨城県守谷市松ヶ丘3丁目21-1", "pref": "茨城県", "lat": 35.938385, "lng": 139.986725}, {"name": "スパレア宇都宮", "addr": "〒320-0051 栃木県宇都宮市上戸祭町216-1", "pref": "栃木県", "lat": 36.591991, "lng": 139.864059}, {"name": "スパレア足利", "addr": "〒326-0005 栃木県足利市大月町3-2 アシコタウンあしかが内", "pref": "栃木県", "lat": 36.3368, "lng": 139.477295}, {"name": "高崎群馬", "addr": "〒370-0069 群馬県高崎市飯塚町382-13", "pref": "群馬県", "lat": 36.343124, "lng": 139.006577}, {"name": "前橋インター", "addr": "〒370-0001 群馬県高崎市中尾町44番地 アカマルA館1階", "pref": "群馬県", "lat": 36.369942, "lng": 139.027267}, {"name": "前橋リリカ", "addr": "〒371-0033 群馬県前橋市国領町2-15-10", "pref": "群馬県", "lat": 36.405277, "lng": 139.069138}];
 var COLORS = {"東京都": "#e63946", "神奈川県": "#457b9d", "埼玉県": "#f4a261", "千葉県": "#2a9d8f", "茨城県": "#8d6a9f", "栃木県": "#e9c46a", "群馬県": "#6a994e"};
 
-var map = L.map('map').setView([35.85, 139.75], 9);
+var map = L.map('map', {zoomControl:true}).setView([35.85, 139.75], 9);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   maxZoom: 18
 }).addTo(map);
 
+// ---- 店舗マーカー ----
 var groups = {};
 STORES.forEach(function(s) {
   if (!groups[s.pref]) groups[s.pref] = L.layerGroup().addTo(map);
@@ -54,7 +97,7 @@ STORES.forEach(function(s) {
     iconSize:[13,13], iconAnchor:[6.5,6.5], className:''
   });
   var q = encodeURIComponent('ゴールドジム ' + s.name + ' ' + s.addr);
-  L.marker([s.lat, s.lng], {icon:icon}).bindPopup(
+  s.marker = L.marker([s.lat, s.lng], {icon:icon}).bindPopup(
     '<div class="pop"><b>' + s.name + '</b><div class="ad">' + s.addr + '</div>' +
     '<a class="lk" href="https://www.google.com/maps/search/?api=1&query=' + q +
     '" target="_blank">地図アプリで開く</a></div>'
@@ -70,6 +113,103 @@ document.querySelectorAll('.lg').forEach(function(btn) {
 });
 
 map.fitBounds(L.latLngBounds(STORES.map(function(s){return [s.lat,s.lng];})).pad(0.06));
+
+// ---- 2点間の距離を計算（ヒュベニの公式の簡易版・ハーバサイン） ----
+function distanceKm(lat1, lng1, lat2, lng2) {
+  var R = 6371;                       // 地球の半径(km)
+  var toRad = Math.PI / 180;
+  var dLat = (lat2 - lat1) * toRad;
+  var dLng = (lng2 - lng1) * toRad;
+  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(lat1*toRad) * Math.cos(lat2*toRad) *
+          Math.sin(dLng/2) * Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ---- 現在地機能 ----
+var meMarker = null, meCircle = null, watchId = null, tracking = false;
+var gpsBtn  = document.getElementById('gps');
+var nearBox = document.getElementById('near');
+
+function showMe(lat, lng, accuracy) {
+  if (meMarker) { map.removeLayer(meMarker); }
+  if (meCircle) { map.removeLayer(meCircle); }
+
+  var icon = L.divIcon({
+    html: '<div style="position:relative">' +
+          '<div class="me-dot"></div>' +
+          '<div class="me-ring" style="position:absolute;top:-2px;left:-2px;' +
+          'width:20px;height:20px;border-radius:50%;background:rgba(26,115,232,.4)"></div>' +
+          '</div>',
+    iconSize:[16,16], iconAnchor:[8,8], className:''
+  });
+  meMarker = L.marker([lat,lng], {icon:icon, zIndexOffset:1000}).addTo(map);
+
+  // 精度の円（誤差範囲）
+  if (accuracy && accuracy < 2000) {
+    meCircle = L.circle([lat,lng], {
+      radius: accuracy, color:'#1a73e8', weight:1,
+      fillColor:'#1a73e8', fillOpacity:.10
+    }).addTo(map);
+  }
+
+  // 最寄り店舗を探す
+  var nearest = null, minDist = Infinity;
+  STORES.forEach(function(s) {
+    var d = distanceKm(lat, lng, s.lat, s.lng);
+    if (d < minDist) { minDist = d; nearest = s; }
+  });
+
+  if (nearest) {
+    document.getElementById('near-nm').textContent = nearest.name;
+    var txt = minDist < 1
+      ? '直線距離 約 ' + Math.round(minDist*1000) + ' m'
+      : '直線距離 約 ' + minDist.toFixed(1) + ' km';
+    document.getElementById('near-ds').textContent = txt + '（' + nearest.pref + '）';
+    nearBox.style.display = 'block';
+  }
+}
+
+gpsBtn.addEventListener('click', function() {
+  if (!navigator.geolocation) {
+    alert('このブラウザは位置情報に対応していません。');
+    return;
+  }
+
+  // 追跡中ならオフにする
+  if (tracking) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null; tracking = false;
+    gpsBtn.classList.remove('on');
+    if (meMarker) { map.removeLayer(meMarker); meMarker = null; }
+    if (meCircle) { map.removeLayer(meCircle); meCircle = null; }
+    nearBox.style.display = 'none';
+    return;
+  }
+
+  gpsBtn.classList.add('busy');
+  var first = true;
+
+  watchId = navigator.geolocation.watchPosition(
+    function(pos) {
+      gpsBtn.classList.remove('busy');
+      gpsBtn.classList.add('on');
+      tracking = true;
+      var c = pos.coords;
+      showMe(c.latitude, c.longitude, c.accuracy);
+      if (first) { map.setView([c.latitude, c.longitude], 13); first = false; }
+    },
+    function(err) {
+      gpsBtn.classList.remove('busy');
+      tracking = false;
+      var msg = '位置情報を取得できませんでした。';
+      if (err.code === 1) msg = '位置情報の利用が許可されていません。\n\niPhoneの「設定」→「Safari」→「位置情報」で許可してください。';
+      else if (err.code === 3) msg = '位置情報の取得がタイムアウトしました。';
+      alert(msg);
+    },
+    { enableHighAccuracy:true, timeout:15000, maximumAge:5000 }
+  );
+});
 </script>
 </body>
 </html>
